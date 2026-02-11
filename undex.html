@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>For Nadine - Neon Merge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050510;
+            --grid-bg: #1a1a24;
+            --cell-empty: #252530;
+            --text: #e0e0e0;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff66;
+            --neon-gold: #ffcc00;
+        }
+
+        /* --- GLOBAL RESET --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            touch-action: none; /* Mencegah scroll layar saat main game */
+        }
+
+        /* --- CRT EFFECT --- */
+        .crt::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+
+        /* --- SCREENS --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s; opacity: 0; pointer-events: none; z-index: 1;
+            padding: 20px;
+            background: var(--bg);
+        }
+        .screen.active { opacity: 1; pointer-events: all; z-index: 10; }
+
+        /* --- PHOTO FRAMES --- */
+        .frame {
+            width: 150px; height: 150px; padding: 5px;
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-pink));
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            margin-bottom: 20px; border-radius: 10px;
+            position: relative;
+        }
+        .frame img {
+            width: 100%; height: 100%; object-fit: cover;
+            border: 2px solid #000; display: block; filter: contrast(1.1) sepia(0.2);
+            border-radius: 6px;
+        }
+
+        /* --- UI ELEMENTS --- */
+        h1 {
+            font-family: 'Press Start 2P', cursive; font-size: 20px;
+            color: var(--neon-gold); text-shadow: 2px 2px 0 #000;
+            text-align: center; line-height: 1.5; margin-bottom: 30px;
+        }
+
+        .btn {
+            background: transparent; border: 2px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive; font-size: 12px;
+            cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 0 10px var(--neon-blue);
+            transition: 0.2s; margin-top: 20px; border-radius: 4px;
+        }
+        .btn:active { background: var(--neon-blue); color: #000; transform: scale(0.95); }
+
+        /* --- GAME BOARD --- */
+        .score-box {
+            font-family: 'Press Start 2P'; font-size: 14px; color: var(--neon-green);
+            margin-bottom: 15px; padding: 10px; border: 1px solid var(--neon-green);
+            border-radius: 5px; background: rgba(0,0,0,0.5);
+        }
+
+        .game-container {
+            width: 300px; height: 300px;
+            background: var(--grid-bg);
+            border: 4px solid #333;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 5px;
+            padding: 5px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.6);
+            touch-action: none; /* Penting untuk swipe */
+        }
+
+        .tile {
+            background: var(--cell-empty);
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Press Start 2P'; font-size: 16px; font-weight: bold;
+            color: #fff;
+            transition: transform 0.1s, background-color 0.2s;
+            text-shadow: 1px 1px 0 #000;
+        }
+        
+        /* Tile Colors */
+        .t-2 { background: #eee4da; color: #776e65; text-shadow: none; }
+        .t-4 { background: #ede0c8; color: #776e65; text-shadow: none; }
+        .t-8 { background: #f2b179; }
+        .t-16 { background: #f59563; }
+        .t-32 { background: #f67c5f; }
+        .t-64 { background: #f65e3b; box-shadow: 0 0 10px #f65e3b; }
+        .t-128 { background: #edcf72; box-shadow: 0 0 10px #edcf72; font-size: 14px; }
+        .t-256 { background: #edcc61; box-shadow: 0 0 15px #edcc61; font-size: 14px; }
+        .t-512 { background: #edc850; box-shadow: 0 0 20px #edc850; font-size: 14px; }
+        .t-1024 { background: var(--neon-pink); box-shadow: 0 0 25px var(--neon-pink); animation: pulse 1s infinite; font-size: 12px; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .pop { animation: pop 0.2s ease-in-out; }
+        @keyframes pop { 0%{transform:scale(0.5)} 70%{transform:scale(1.1)} 100%{transform:scale(1)} }
+
+        /* --- LONG TEXT BOX (SCROLL FIX) --- */
+        .text-box {
+            width: 90%; max-height: 250px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid var(--neon-green);
+            padding: 20px; border-radius: 8px;
+            font-family: 'Rajdhani', monospace; font-size: 1.1rem;
+            color: #fff; line-height: 1.6;
+            
+            /* SCROLL CONFIG */
+            overflow-y: auto; 
+            touch-action: pan-y; 
+            user-select: text;
+            pointer-events: auto;
+            
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
+            margin-top: 15px;
+        }
+
+        /* Scrollbar styling */
+        .text-box::-webkit-scrollbar { width: 6px; }
+        .text-box::-webkit-scrollbar-track { background: #111; }
+        .text-box::-webkit-scrollbar-thumb { background: var(--neon-green); border-radius: 3px; }
+
+    </style>
+</head>
+<body class="crt">
+
+    <div id="screen-start" class="screen active">
+        <div class="frame">
+            <img src="https://img.sanishtech.com/u/e62d3c6fe58f275a09a5959bf5122beb.png" alt="Nadine">
+        </div>
+        <h1>NUMBER MERGE<br><span style="font-size:10px; color:#888;">SEMANGAT SAYANG</span></h1>
+        <div style="font-size: 12px; color: #888; text-align: center; margin-bottom: 20px;">
+            <br>
+        </div>
+        <button class="btn" onclick="startGame()">START MISSION</button>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div class="score-box">SCORE: <span id="score">0</span></div>
+        <div class="game-container" id="grid-container">
+            </div>
+        <div style="margin-top:20px; font-size:10px; color:#666;">SWIPE TO MOVE</div>
+        <button class="btn" style="border-color:#ff3333; color:#ff3333; font-size:10px; padding:10px;" onclick="initGame()">RESET</button>
+    </div>
+
+    <div id="screen-win" class="screen">
+        <h1 style="color:var(--neon-pink); font-size:16px;">MISSION ACCOMPLISHED</h1>
+        <div class="frame" style="border-color:var(--neon-pink)">
+            <img src="https://img.sanishtech.com/u/669bf5b84fd807f4520b2c9634ba9d8d.png" alt="Win">
+        </div>
+        <div class="text-box" id="long-text">
+            </div>
+        <button class="btn" onclick="location.reload()">REPLAY</button>
+    </div>
+
+    <script>
+        // --- KONFIGURASI PESAN CINTA ---
+        const loveLetter = `HAII HAII HAII IM BACKKKK
+  
+  ehheheheeee akhirnyaaa main gamee lagii yaaa setelah beberapaa harii ga mainin gamenyaaa, sebelumnyaaa fathan meminta maaf sebesar besarnyaa yaaa kalau akhir akhir inii ga bikin gameee, yaa kamu tau sendiri laa aku sekarang sering tidaa kuatt wkwkwkwk.. sekarang jadi ngantukan euyyy, dann sekarang jugaa uda bener bener kehabisan ideee huhuuu.. yasudaaa ak hari ini akan mengusahakan untuk buat gamee lagii.. yapss mungkin cerita hari ini akan cukup panjangg nihh jadii yaa selamatt menikmatiii
+  
+  okayydeee jadii udaa beraoa hari nih gaada longtekss, berartii ceritaa akan di mulai pada hari ssninn. wahh terimakasihh banyak banyakk yaaa buat hari seninnn, seneng bangett deh bisa nemenin kamu sehariann penuhhh wkwkwkwk, darii pas upacaraa bisa nemenin kamuu.. terusss yaa bisaa sebangku sama kamu sehariann deehhh akhirnyaaa yaakkk, yaa walaupun kelakuanku sangat amat childish aku mintak maaf yaakk, tapi menurutku hari ituu cukupp seruu dehhh.. di lab pun kita bersamaaa, jajann bareng jugaakk deehh.. yaaa senin was so funn menurutkuu.. timakasii banyakk yaakk, dann kamu jugaa berhasil ngetrihft mendapatkan batang barang baguss yakk, alhamdulillah dehh sudah komplitt yak outfifmuu wkwkwkkww..
+  
+  okeydeee kitaa ke harii selasaaa, waahh ini jugaa ga kalah seruu euyy kitaa duduk sebangku lagiii ssksshshsjhs, bisa jajan bareng lagi jugaakkk tuhhh and theennn yaaa mirip mirip hari senin sii ya walaupun di hari selasa ada hal yang tidak terdugaa sihh, ternyataa msalahnyaa di perpanjang euyyy, gajelass bangett sii ituu.. yasudahlahh yakk yang penting lan kamu aslinyaa juga ga salahh dehh.. jadii yaa biarkann ajaa mereka yang ribett sendirii, its okeyy yak sayangg im always heree for uuu pokoknyaa maahhh.. intinyaa terimakasii banyakk yaa buat harii selasanyaaaa.. cukup seruu jugaa deh pokoknyaa aku bisa banyak bantu kamu jugakk, dari sejarah,eko,mtk dan lain lainn senengg dehhhh dann timakasii yaa sudahh membelikan ak cilungnyaaa, wahh enak sekalii dehh cilungyaaa alhamdulillah ngidammu kesampaiann yaakk wkwkkwkwkw
+  
+  lanjutt ke rabuuuu, yaaahh kitaa ga sebangku nihh.. tapii alhamdulillah dehh masii bisaa terus bersamaaa heheheee.. yaa walaupun tadi pagi ku tinggal olahragaa, aku mintaa maaff yaaaa.. kalau malah ninggal pas olahragaa, yaa aku pengen olahragaa sii.. biar ga gendudd makanyaa aku pengen banyak gerak hehehee.. teruss kamu jugak masii sering makn ke tempatku kann jadii yaa masii cukup seruu, dan jugakk di lab masih bersamaa jugaaa.. yaaa hari ini kamuu manjaa dan itu lucu bangett dee wkwkwkwk, timakasii banyakk yapsss.. dann harii ini jugaa bisa pulang bersamaa dehhh.. yaa kehujanan lagii wkwkwkwkwkwk.. tapi gapapaa seruu bangett kann bisaa beli geprekk jugakk heheheee.. bener bener timakasii banyakk yaaa buatt beberapa hari inii, alhamdulillah dee akhrinyaa bisaa seringg bersamaa di waktu sekolahh heheheheeeee.. 
+  
+  okaayydeee sekiann duluu yaaa ceritaa ceritanyaaa wkwkwkwkw.. intinyaa timakasii yaaa buat beberapaa harii kebelakang inii, dan mintaa maaf jugaa kalau baru sempet bikin game harii inii wkwkwkwkwkw.. yasudahlahh selamatt pagii yaakk kalau kamu baca ini pagiii.. selamat menjalankann aktivitass yaaa sayangg, semogaa hari inii kitaa bisa bersama lagii deeee aamiin.. okaayydee segini dulu ajaa yaakkkk.. see uu disekolahh yaaaaa.. 
+  
+  JE T'AIMEEE BIEENNN SAYAANGGG🩵💙🩵💙🩵💙🩵💙💙💙💙🩵`;
+
+        // --- GAME LOGIC ---
+        const size = 4;
+        let board = [];
+        let score = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let hasWon = false;
+
+        // Audio Setup
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'move') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'merge') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                // Simple melody
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.frequency.value = freq;
+                    g.gain.setValueAtTime(0.1, now + i*0.15);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + i*0.15 + 0.3);
+                    o.start(now + i*0.15); o.stop(now + i*0.15 + 0.3);
+                });
+            }
+        }
+
+        function startGame() {
+            document.getElementById('screen-start').classList.remove('active');
+            document.getElementById('screen-game').classList.add('active');
+            playSound('merge');
+            initGame();
+        }
+
+        function initGame() {
+            board = Array(size * size).fill(0);
+            score = 0;
+            hasWon = false;
+            updateScore();
+            addRandomTile();
+            addRandomTile();
+            updateView();
+        }
+
+        function addRandomTile() {
+            let available = board.map((val, idx) => val === 0 ? idx : null).filter(val => val !== null);
+            if (available.length > 0) {
+                let idx = available[Math.floor(Math.random() * available.length)];
+                board[idx] = Math.random() < 0.9 ? 2 : 4;
+            }
+        }
+
+        function updateView() {
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '';
+            board.forEach(val => {
+                const div = document.createElement('div');
+                div.className = `tile t-${val}`;
+                if(val > 0) {
+                    div.innerText = val;
+                    div.classList.add('pop');
+                }
+                container.appendChild(div);
+            });
+        }
+
+        function updateScore() {
+            document.getElementById('score').innerText = score;
+        }
+
+        // --- CORE LOGIC (MOVE & MERGE) ---
+        function move(direction) {
+            if (hasWon) return; // Stop input if won handling (unless continued, but here we stop)
+            
+            let rotated = false;
+            let moved = false;
+
+            // Normalize everything to "Left" movement logic by rotating board
+            if (direction === 'up') { board = rotateLeft(board); rotated = true; }
+            else if (direction === 'right') { board = rotateLeft(board); board = rotateLeft(board); rotated = true; }
+            else if (direction === 'down') { board = rotateRight(board); rotated = true; }
+
+            // Process Rows (as if moving Left)
+            let newBoard = [];
+            let earnedPoints = 0;
+
+            for (let i = 0; i < size; i++) {
+                let row = board.slice(i * size, (i + 1) * size);
+                let filtered = row.filter(val => val !== 0); // Remove zeros
+                let merged = [];
+                
+                for (let j = 0; j < filtered.length; j++) {
+                    if (j < filtered.length - 1 && filtered[j] === filtered[j + 1]) {
+                        let val = filtered[j] * 2;
+                        merged.push(val);
+                        earnedPoints += val;
+                        score += val;
+                        
+                        // WIN CONDITION: 1024
+                        if (val === 128 && !hasWon) {
+                            hasWon = true;
+                            setTimeout(winGame, 500);
+                        }
+                        
+                        j++; // Skip next element
+                    } else {
+                        merged.push(filtered[j]);
+                    }
+                }
+
+                // Pad with zeros to fill row
+                while (merged.length < size) merged.push(0);
+                newBoard = newBoard.concat(merged);
+            }
+
+            // Check if anything changed
+            if (JSON.stringify(board) !== JSON.stringify(newBoard)) moved = true;
+            board = newBoard;
+
+            // Rotate back
+            if (rotated) {
+                if (direction === 'up') { board = rotateRight(board); }
+                else if (direction === 'right') { board = rotateRight(board); board = rotateRight(board); }
+                else if (direction === 'down') { board = rotateLeft(board); }
+            }
+
+            if (moved) {
+                addRandomTile();
+                updateView();
+                updateScore();
+                playSound(earnedPoints > 0 ? 'merge' : 'move');
+            }
+        }
+
+        // Helpers for rotation (Square Matrix)
+        function rotateLeft(arr) {
+            let newArr = Array(16).fill(0);
+            for(let i=0; i<4; i++) for(let j=0; j<4; j++) newArr[i*4 + j] = arr[j*4 + (3-i)];
+            return newArr;
+        }
+        function rotateRight(arr) {
+            let newArr = Array(16).fill(0);
+            for(let i=0; i<4; i++) for(let j=0; j<4; j++) newArr[i*4 + j] = arr[(3-j)*4 + i];
+            return newArr;
+        }
+
+        // --- INPUT HANDLING ---
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowUp') move('up');
+            else if (e.key === 'ArrowDown') move('down');
+            else if (e.key === 'ArrowLeft') move('left');
+            else if (e.key === 'ArrowRight') move('right');
+        });
+
+        const gameArea = document.getElementById('grid-container');
+        
+        gameArea.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: false});
+
+        gameArea.addEventListener('touchend', e => {
+            e.preventDefault();
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+        }, {passive: false});
+
+        function handleSwipe(x1, y1, x2, y2) {
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (Math.abs(dx) > 30) move(dx > 0 ? 'right' : 'left');
+            } else {
+                if (Math.abs(dy) > 30) move(dy > 0 ? 'down' : 'up');
+            }
+        }
+
+        // --- WIN LOGIC ---
+        function winGame() {
+            playSound('win');
+            document.getElementById('screen-game').classList.remove('active');
+            document.getElementById('screen-win').classList.add('active');
+            
+            const textBox = document.getElementById('long-text');
+            textBox.innerHTML = '';
+            let i = 0;
+            
+            function type() {
+                if (i < loveLetter.length) {
+                    let char = loveLetter.charAt(i);
+                    if (char === '\n') char = '<br>';
+                    textBox.innerHTML += char;
+                    i++;
+                    textBox.scrollTop = textBox.scrollHeight;
+                    setTimeout(type, 40);
+                }
+            }
+            type();
+        }
+    </script>
+</body>
+</html>
